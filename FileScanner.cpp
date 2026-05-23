@@ -22,7 +22,7 @@ std::string_view getExtension(std::string_view filename) {
 using FileMap = std::unordered_map<std::string, std::vector<std::string>>;
 
 std::optional<FileMap> buildFileMap(const fs::path& dir) {
-    if (!fs::exists(dir))
+    if (!fs::exists(dir) || !fs::is_directory(dir))
         return std::nullopt;
     FileMap result;
     for (auto dirIT : fs::recursive_directory_iterator(dir)) {
@@ -49,12 +49,11 @@ void printReport(const FileMap& fileMap) {
     }
 }
 
-
 std::optional<std::vector<std::string>> getFilesByExtension(const FileMap & fileMap, std::string_view ext) {
     auto extStr = std::string(ext);
     if (ext.empty())
         extStr = "unknown";
-    if (!fileMap.contains(extStr))
+    if (!fileMap.contains(extStr))  //c++20
         return std::nullopt;
 
     return fileMap.at(extStr);
@@ -62,17 +61,22 @@ std::optional<std::vector<std::string>> getFilesByExtension(const FileMap & file
 
 int main(int argc, char** argv) {
     fs::path path = (argc > 1) ? argv[1] : ".";
+    std::string ext = (argc > 2) ? argv[2] : "";
 
     auto fileMap = buildFileMap(path);
+
+    std::cout << "Current diretory: " << fs::absolute(path) << std::endl << std::endl;
 
     if (fileMap.has_value()) {
         printReport(fileMap.value());
 
-        auto logVec = getFilesByExtension(fileMap.value(), "log");
-        if (logVec.has_value()) {
-            std::cout << std::endl << "Logs files: ";
-            for (auto logFileName : logVec.value()) {
-                std::cout << logFileName << "; ";
+        if (!ext.empty()) {
+            auto filesByExt = getFilesByExtension(fileMap.value(), ext);
+            if (filesByExt.has_value()) {
+                std::cout << std::endl << "Files with extension " << ext << ":" << std::endl;
+                for (auto fileName : filesByExt.value()) {
+                    std::cout << fileName << std::endl;
+                }
             }
         }
     }
